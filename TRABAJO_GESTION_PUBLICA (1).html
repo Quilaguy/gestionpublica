@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Centro de Análisis · Accidentes de Tránsito</title>
+<!-- Librerías -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg: #f5f7fa;
+  --card: #fff;
+  --ink: #182230;
+  --muted: #667085;
+  --line: #e4e7ec;
+  --blue: #1769e0;
+  --blue2: #0d4fb8;
+  --navy: #101828;
+  --green: #12a150;
+  --shadow: 0 6px 22px rgba(16,24,40,.06);
+  --input-bg: #fff;
+  --table-hover: #f8fbff;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: #334155;
+  --blue: #3b82f6;
+  --blue2: #2563eb;
+  --navy: #020617;
+  --green: #22c55e;
+  --shadow: 0 6px 22px rgba(0,0,0,.3);
+  --input-bg: #0f172a;
+  --table-hover: #273548;
+}
+
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif;transition:background .3s,color .3s}
+.top{height:70px;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 26px;position:sticky;top:0;z-index:20}
+.logo{display:flex;align-items:center;gap:11px;font-weight:750}
+.logoMark{width:36px;height:36px;border-radius:9px;background:var(--blue);display:grid;place-items:center}
+.topInfo{margin-left:auto;font-size:12px;color:#b7c0ce;display:flex;align-items:center;gap:15px}
+
+.theme-toggle{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+.theme-toggle:hover{background:rgba(255,255,255,.2)}
+
+main{width:100%;max-width:1600px;margin:auto;padding:24px}
+.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:18px}
+.head h1{font-size:25px;margin:0 0 5px;letter-spacing:-.02em}
+.head p{margin:0;color:var(--muted);font-size:12px}
+.buttons{display:flex;gap:8px}
+
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 13px;font-weight:700;font-size:12px;cursor:pointer}
+.btn:hover{border-color:var(--blue)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:var(--blue2)}
+
+.upload{background:var(--card);border:1px dashed var(--muted);border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:13px;margin-bottom:17px}
+.upload input{max-width:430px;color:var(--ink)}
+.status{font-size:11px;color:var(--muted)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);transition:background .3s,border-color .3s}
+.filters{padding:17px;margin-bottom:17px}
+.filterTitle{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.filterTitle b{font-size:14px}
+.grid6{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:11px}
+.field label{display:block;font-size:10px;color:var(--muted);font-weight:800;margin-bottom:5px}
+.field input,.field select{height:37px;width:100%;border:1px solid var(--line);border-radius:7px;padding:0 9px;color:var(--ink);background:var(--input-bg);outline:none}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(23,105,224,.15)}
+.filterActions{display:flex;justify-content:flex-end;gap:8px;margin-top:11px}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin-bottom:17px}
+.kpi{padding:16px}
+.kpiLabel{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.05em}
+.kpiValue{font-size:25px;font-weight:800;margin-top:7px;letter-spacing:-.03em}
+.kpiSub{font-size:10px;color:var(--muted);margin-top:3px;opacity:.8}
+
+.total{background:linear-gradient(135deg,#164e8c,#1f6fca);color:#fff;padding:18px;border-radius:12px;box-shadow:var(--shadow);margin-bottom:17px;display:flex;align-items:center;justify-content:space-between}
+.total small{opacity:.8;text-transform:uppercase;letter-spacing:.09em;font-weight:750}
+.total strong{font-size:34px;display:block;margin-top:3px}
+.dateBadge{font-size:11px;background:rgba(255,255,255,.12);padding:8px 11px;border-radius:20px}
+
+.row2{display:grid;grid-template-columns:1.25fr 1fr;gap:17px;margin-bottom:17px}
+.rowEqual{grid-template-columns:1fr 1fr}
+.panel{padding:17px}
+.panelHead{margin-bottom:11px}
+.panelHead b{font-size:14px}
+.panelHead span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.chart{height:315px;position:relative}
+.chart.sm{height:285px}
+
+.rankGrid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:17px}
+.rankBox{max-height:390px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.rankTable{width:100%;border-collapse:collapse;font-size:12px}
+.rankTable th{position:sticky;top:0;background:var(--card);color:var(--muted);font-size:10px;text-transform:uppercase;padding:9px;text-align:left;border-bottom:1px solid var(--line)}
+.rankTable td{padding:8px 9px;border-top:1px solid var(--line)}
+.rankTable td:last-child,.rankTable th:last-child{text-align:right}
+.rankNum{display:inline-grid;place-items:center;width:24px;height:24px;background:var(--line);border-radius:50%;font-weight:800;color:var(--ink)}
+
+.insight{font-size:12px;line-height:1.8;color:var(--muted)}
+.insightItem{padding:9px 0;border-bottom:1px solid var(--line)}
+.insightItem:last-child{border-bottom:0}
+
+.tablePanel{padding:17px}
+.tableHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.tableHead b{font-size:14px}
+.tableScroll{max-height:500px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.dataTable{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.dataTable th{position:sticky;top:0;background:var(--navy);color:#fff;text-align:left;padding:10px;z-index:2}
+.dataTable td{padding:8px 10px;border-top:1px solid var(--line)}
+.dataTable tr:hover{background:var(--table-hover)}
+.num{text-align:right}
+.empty{text-align:center;color:var(--muted);padding:30px}
+
+.overlay{position:fixed;inset:0;background:rgba(16,24,40,.42);display:grid;place-items:center;z-index:100}
+.loader{width:360px;max-width:90vw;background:var(--card);border-radius:13px;padding:24px;box-shadow:var(--shadow);color:var(--ink)}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress{height:7px;background:var(--line);border-radius:10px;overflow:hidden;margin:14px 0 8px}
+.progress i{display:block;height:100%;width:0;background:var(--blue);transition:width .1s}
+.hidden{display:none!important}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--navy);color:#fff;padding:11px 14px;border-radius:8px;font-size:11px;z-index:120}
+
+@media(max-width:1200px){.grid6{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(3,1fr)}.row2,.rowEqual{grid-template-columns:1fr}}
+@media(max-width:800px){main{padding:14px}.head{display:block}.buttons{margin-top:12px}.kpis{grid-template-columns:1fr 1fr}.rankGrid{grid-template-columns:1fr}.grid6{grid-template-columns:1fr 1fr}.upload{display:block}.upload input{margin:8px 0;width:100%}}
+@media(max-width:520px){.kpis,.grid6{grid-template-columns:1fr}.total{display:block}.dateBadge{display:inline-block;margin-top:10px}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo"><div class="logoMark">▦</div>Centro de Análisis · Accidentes de Tránsito</div>
+  <div class="topInfo" id="topInfo">
+    <span>Sin archivo cargado</span>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Modo Noche</button>
+  </div>
+</header>
+
+<main>
+<section class="head" id="resumen">
+  <div><h1>Panel de inteligencia territorial</h1><p>Exploración y análisis optimizado de accidentes por periodo y territorio.</p></div>
+  <div class="buttons">
+    <button class="btn" onclick="document.getElementById('file').click()">📂 Cargar CSV</button>
+    <button class="btn" onclick="exportCSV()">↓ Exportar Filtrado</button>
+    <button class="btn primary" onclick="resetFilters()">Restablecer</button>
+  </div>
+</section>
+
+<div class="upload card">
+  <b style="font-size:12px">Fuente de datos</b>
+  <input id="file" type="file" accept=".csv">
+  <span class="status" id="status">Carga el archivo CSV para iniciar el análisis interactivo.</span>
+</div>
+
+<section class="filters card">
+  <div class="filterTitle"><b>Filtros de análisis</b><span class="status" id="activeFilters">Sin filtros activos</span></div>
+  <div class="grid6">
+    <div class="field"><label>FECHA DESDE</label><input type="date" id="start"></div>
+    <div class="field"><label>FECHA HASTA</label><input type="date" id="end"></div>
+    <div class="field"><label>CÓDIGO DEPARTAMENTO</label><input id="deptCode" placeholder="Ej. 11"></div>
+    <div class="field"><label>DEPARTAMENTO</label><select id="dept"><option value="">Todos</option></select></div>
+    <div class="field"><label>CÓDIGO MUNICIPIO</label><input id="munCode" placeholder="Ej. 11001"></div>
+    <div class="field"><label>MUNICIPIO</label><select id="mun"><option value="">Todos</option></select></div>
+  </div>
+  <div class="filterActions"><button class="btn" onclick="resetFilters()">Limpiar</button><button class="btn primary" onclick="applyFilters()">Aplicar filtros</button></div>
+</section>
+
+<div class="total">
+  <div><small>Total accidentes registrados</small><strong id="total">—</strong></div>
+  <div class="dateBadge" id="dateRange">Periodo: —</div>
+</div>
+
+<section class="kpis">
+  <div class="card kpi"><div class="kpiLabel">Registros</div><div class="kpiValue" id="rowsKpi">—</div><div class="kpiSub">Filas seleccionadas</div></div>
+  <div class="card kpi"><div class="kpiLabel">Departamentos</div><div class="kpiValue" id="deptKpi">—</div><div class="kpiSub">Cobertura territorial</div></div>
+  <div class="card kpi"><div class="kpiLabel">Municipios</div><div class="kpiValue" id="munKpi">—</div><div class="kpiSub">Municipios presentes</div></div>
+  <div class="card kpi"><div class="kpiLabel">Promedio / registro</div><div class="kpiValue" id="avgKpi">—</div><div class="kpiSub">Suma CANTIDAD / filas</div></div>
+  <div class="card kpi"><div class="kpiLabel">Participación líder</div><div class="kpiValue" id="shareKpi">—</div><div class="kpiSub">Departamento líder</div></div>
+</section>
+
+<section class="row2" id="territorio">
+  <div class="card panel"><div class="panelHead"><b>Accidentes por departamento</b><span>Top 15 · suma de CANTIDAD</span></div><div class="chart"><canvas id="deptChart"></canvas></div></div>
+  <div class="card panel"><div class="panelHead"><b>Accidentes por municipio</b><span>Top 20 · suma de CANTIDAD</span></div><div class="chart"><canvas id="munChart"></canvas></div></div>
+</section>
+
+<section class="rankGrid">
+  <div class="card panel"><div class="panelHead"><b>Ranking de departamentos</b><span>Listado completo filtrado</span></div><div class="rankBox"><table class="rankTable"><thead><tr><th>#</th><th>Departamento</th><th>Accidentes</th></tr></thead><tbody id="deptRank"></tbody></table></div></div>
+  <div class="card panel"><div class="panelHead"><b>Ranking de municipios</b><span>Listado completo filtrado</span></div><div class="rankBox"><table class="rankTable"><thead><tr><th>#</th><th>Municipio</th><th>Accidentes</th></tr></thead><tbody id="munRank"></tbody></table></div></div>
+</section>
+
+<section class="row2 rowEqual" id="temporal">
+  <div class="card panel"><div class="panelHead"><b>Evolución anual</b><span>Accidentes por año</span></div><div class="chart sm"><canvas id="yearChart"></canvas></div></div>
+  <div class="card panel"><div class="panelHead"><b>Distribución mensual</b><span>Comportamiento acumulado por mes</span></div><div class="chart sm"><canvas id="monthChart"></canvas></div></div>
+</section>
+
+<section class="row2 rowEqual">
+  <div class="card panel"><div class="panelHead"><b>Participación territorial</b><span>Principales departamentos · porcentaje</span></div><div class="chart sm"><canvas id="shareChart"></canvas></div></div>
+  <div class="card panel"><div class="panelHead"><b>Lectura ejecutiva</b><span>Resumen automático inteligente</span></div><div class="insight" id="insight"></div></div>
+</section>
+
+<section class="card tablePanel" id="detalle">
+  <div class="tableHead"><div><b>Detalle de registros</b><div class="status" id="tableMeta">Carga una base para comenzar.</div></div><button class="btn" onclick="exportCSV()">Exportar resultados</button></div>
+  <div class="tableScroll"><table class="dataTable"><thead><tr><th>Fecha</th><th>Cód. depto.</th><th>Departamento</th><th>Cód. municipio</th><th>Municipio</th><th class="num">Cantidad</th></tr></thead><tbody id="tbody"><tr><td colspan="6" class="empty">No hay datos.</td></tr></tbody></table></div>
+</section>
+</main>
+
+<div class="overlay hidden" id="overlay">
+  <div class="loader">
+    <div class="spin"></div>
+    <div style="text-align:center;font-weight:750" id="loadText">Procesando archivo…</div>
+    <div class="progress"><i id="bar"></i></div>
+    <div class="status" id="loadSub" style="text-align:center">Preparando datos</div>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+const state={rows:[],filtered:[],charts:{},loaded:false,token:0};
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString('es-CO');
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function toast(x){$('toast').textContent=x;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),2500)}
+function showLoad(t,sub=''){ $('loadText').textContent=t;$('loadSub').textContent=sub;$('overlay').classList.remove('hidden') }
+function hideLoad(){ $('overlay').classList.add('hidden') }
+function progress(p){$('bar').style.width=Math.max(0,Math.min(100,p))+'%'}
+
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  if(isDark){
+    html.removeAttribute('data-theme');
+    $('themeBtn').textContent='🌙 Modo Noche';
+    localStorage.setItem('theme','light');
+  } else {
+    html.setAttribute('data-theme','dark');
+    $('themeBtn').textContent='☀️ Modo Claro';
+    localStorage.setItem('theme','dark');
+  }
+  // Actualizar gráficos si ya están cargados para que adopten los colores correspondientes
+  if(state.loaded) {
+    updateDashboard();
+  }
+}
+// Cargar preferencia guardada
+if(localStorage.getItem('theme')==='dark'){
+  document.documentElement.setAttribute('data-theme','dark');
+  $('themeBtn').textContent='☀️ Modo Claro';
+}
+
+function parseDate(v){
+  const m=String(v||'').trim().match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : '';
+}
+function dateInt(v){return v?Number(v.replaceAll('-','')):0}
+function qty(v){
+  const n=Number(String(v??'').replace(/\s/g,'').replace(',','.'));
+  return Number.isFinite(n)?n:0
+}
+function cleanCell(s){return String(s??'').trim()}
+
+function loadCSV(file){
+  state.rows=[];state.filtered=[];state.loaded=false;state.token++;
+  const token=state.token;
+  showLoad('Leyendo archivo…','Procesando en segundo plano');
+  $('status').textContent=`Leyendo ${file.name} · ${(file.size/1048576).toFixed(1)} MB`;
+
+  let processed = 0;
+  let isFirstChunk = true;
+
+  Papa.parse(file, {
+    header: false,
+    skipEmptyLines: true,
+    worker: true,
+    chunk: function(results, parser) {
+      if(token !== state.token) { parser.abort(); return; }
+      const data = results.data;
+      let startIdx = isFirstChunk ? 1 : 0; 
+      isFirstChunk = false;
+
+      for (let i = startIdx; i < data.length; i++) {
+        const c = data[i];
+        if (c.length < 6) continue;
+        state.rows.push({
+          d: parseDate(cleanCell(c[0])),
+          di: dateInt(parseDate(cleanCell(c[0]))),
+          ds: cleanCell(c[0]),
+          dc: cleanCell(c[1]),
+          dpt: cleanCell(c[2]),
+          mc: cleanCell(c[3]),
+          mun: cleanCell(c[4]),
+          q: qty(c[5])
+        });
+        processed++;
+      }
+
+      const pct = Math.min(99, (results.meta.cursor / file.size) * 100);
+      progress(pct);
+      $('loadText').textContent=`Procesando ${fmt(processed)} registros`;
+      $('loadSub').textContent=`${pct.toFixed(0)}% del archivo leído`;
+    },
+    complete: async function() {
+      if(token !== state.token) return;
+      progress(100);
+      if(!state.rows.length) {
+        hideLoad();
+        $('status').textContent='Error: No se encontraron registros válidos.';
+        toast('El archivo está vacío o no es válido');
+        return;
+      }
+      state.loaded=true;
+      $('topInfo').innerHTML=`<span>${fmt(state.rows.length)} registros · ${file.name}</span> <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">${document.documentElement.getAttribute('data-theme')==='dark'?'☀️ Modo Claro':'🌙 Modo Noche'}</button>`;
+      $('status').textContent=`Base cargada correctamente · ${fmt(state.rows.length)} registros`;
+      initFilters();
+      await applyFilters(true);
+      hideLoad();
+      toast('Base cargada correctamente');
+    },
+    error: function(err) {
+      hideLoad();
+      $('status').textContent='Error: ' + err.message;
+      toast('No fue posible cargar la base');
+    }
+  });
+}
+
+$('file').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  loadCSV(f);
+});
+
+// Nombre del archivo ZIP que se intenta cargar automáticamente
+// (debe estar ubicado en la misma carpeta que este archivo HTML)
+const AUTO_ZIP_NAME = 'LESIONES_ACCIDENTES_DE_TRANSITO_20260816.zip';
+
+async function autoLoadCSV(){
+  $('status').textContent = `Buscando ${AUTO_ZIP_NAME} en la carpeta local…`;
+  try{
+    const resp = await fetch(encodeURI(AUTO_ZIP_NAME));
+    if(!resp.ok) throw new Error(`No se encontró el archivo (HTTP ${resp.status})`);
+    const zipBlob = await resp.blob();
+
+    $('status').textContent = `Descomprimiendo ${AUTO_ZIP_NAME}…`;
+    const zip = await JSZip.loadAsync(zipBlob);
+
+    // Buscar el primer archivo .csv dentro del ZIP
+    const csvEntryName = Object.keys(zip.files).find(name =>
+      name.toLowerCase().endsWith('.csv') && !zip.files[name].dir
+    );
+    if(!csvEntryName) throw new Error('El ZIP no contiene ningún archivo .csv');
+
+    const csvBlob = await zip.files[csvEntryName].async('blob');
+    const file = new File([csvBlob], csvEntryName, {type:'text/csv'});
+    loadCSV(file);
+  }catch(err){
+    $('status').textContent = 'No se pudo cargar el CSV automáticamente. Cárgalo manualmente con el botón "Cargar CSV".';
+    toast('Carga automática no disponible: usa el botón "Cargar CSV"');
+    console.warn('Auto-carga fallida:', err);
+  }
+}
+
+// Intentar cargar automáticamente al iniciar la página
+autoLoadCSV();
+
+function initFilters(){
+  const depts=[...new Set(state.rows.map(r=>r.dpt).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  $('dept').innerHTML='<option value="">Todos</option>'+depts.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  updateMuns();
+}
+function updateMuns(){
+  const d=$('dept').value;
+  const m=[...new Set(state.rows.filter(r=>!d||r.dpt===d).map(r=>r.mun).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  $('mun').innerHTML='<option value="">Todos</option>'+m.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+}
+$('dept').addEventListener('change',()=>{updateMuns()});
+
+async function applyFilters(initial=false){
+  if(!state.loaded)return;
+  const token=++state.token;
+  const s=dateInt($('start').value),e=dateInt($('end').value),dc=$('deptCode').value.trim(),d=$('dept').value,mc=$('munCode').value.trim(),m=$('mun').value;
+  showLoad('Aplicando filtros…','Analizando registros');
+  state.filtered=[];const out=state.filtered;const data=state.rows;const block=30000;
+  for(let i=0;i<data.length;i+=block){
+    if(token!==state.token)return;
+    const end=Math.min(i+block,data.length);
+    for(let j=i;j<end;j++){
+      const r=data[j];
+      if(s&&r.di<s)continue;if(e&&r.di>e)continue;
+      if(dc&&!r.dc.includes(dc))continue;if(d&&r.dpt!==d)continue;
+      if(mc&&!r.mc.includes(mc))continue;if(m&&r.mun!==m)continue;
+      out.push(r);
+    }
+    progress((end/data.length)*100);$('loadText').textContent=`Aplicando filtros… ${fmt(end)} / ${fmt(data.length)}`;
+    await new Promise(r=>setTimeout(r,0));
+  }
+  updateDashboard();hideLoad();
+}
+
+function resetFilters(){
+  ['start','end','deptCode','munCode'].forEach(id=>$(id).value='');
+  $('dept').value='';updateMuns();$('mun').value='';
+  if(state.loaded)applyFilters();
+}
+function agg(list,key){
+  const m=new Map();
+  for(const r of list){const k=key(r);if(!k)continue;m.set(k,(m.get(k)||0)+r.q)}
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function destroy(k){if(state.charts[k]){state.charts[k].destroy();state.charts[k]=null}}
+
+function getChartColor(){
+  return document.documentElement.getAttribute('data-theme')==='dark'?'#94a3b8':'#667085';
+}
+
+function opts(horizontal=false){
+  const color=getChartColor();
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)+' accidentes'}}},
+    scales:horizontal?{
+      x:{beginAtZero:true,grid:{color:document.documentElement.getAttribute('data-theme')==='dark'?'#334155':'#eef1f5'},ticks:{color}},
+      y:{grid:{display:false},ticks:{color}}
+    }:{
+      x:{grid:{display:false},ticks:{color}},
+      y:{beginAtZero:true,grid:{color:document.documentElement.getAttribute('data-theme')==='dark'?'#334155':'#eef1f5'},ticks:{color}}
+    }
+  };
+}
+
+function bar(id,data,h=false){return new Chart($(id),{type:'bar',data:{labels:data.map(x=>x[0]),datasets:[{data:data.map(x=>x[1]),backgroundColor:'#1769e0',borderRadius:4,maxBarThickness:22}]},options:opts(h)})}
+function line(id,data){return new Chart($(id),{type:'line',data:{labels:data.map(x=>x[0]),datasets:[{data:data.map(x=>x[1]),borderColor:'#1769e0',backgroundColor:'rgba(23,105,224,0.1)',tension:.25,pointRadius:2,fill:true,borderWidth:2}]},options:opts()})}
+function dough(id,data,total){
+  return new Chart($(id),{
+    type:'doughnut',
+    data:{labels:data.map(x=>x[0]),datasets:[{data:data.map(x=>x[1])}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{
+          position:'right',
+          labels:{
+            boxWidth:10,
+            font:{size:10},
+            color:getChartColor(), // Se ajusta dinámicamente según el modo (oscuro o claro)
+            generateLabels:function(chart){
+              const ds=chart.data.datasets[0];
+              return chart.data.labels.map((label,i)=>{
+                const value=ds.data[i]||0;
+                const pct=total?value/total*100:0;
+                return {text:`${label} · ${fmt(value)} (${pct.toFixed(1)}%)`,fillStyle:chart.data.datasets[0].backgroundColor?.[i],index:i,fontColor:getChartColor()};
+              });
+            }
+          }
+        },
+        tooltip:{callbacks:{label:c=>` ${fmt(c.raw||0)} accidentes · ${(c.raw/total*100).toFixed(1)}%`}}
+      }
+    }
+  })
+}
+
+function updateDashboard(){
+  const f=state.filtered,total=f.reduce((a,r)=>a+r.q,0);
+  const ds=agg(f,r=>r.dpt),ms=agg(f,r=>r.mun);
+  const depSet=new Set(f.map(r=>r.dc).filter(Boolean)),munSet=new Set(f.map(r=>r.mc).filter(Boolean));
+  $('total').textContent=fmt(total);$('rowsKpi').textContent=fmt(f.length);$('deptKpi').textContent=fmt(depSet.size);$('munKpi').textContent=fmt(munSet.size);
+  $('avgKpi').textContent=f.length?(total/f.length).toLocaleString('es-CO',{maximumFractionDigits:2}):'0';
+  const leader=ds[0],share=leader&&total?leader[1]/total*100:0;$('shareKpi').textContent=share.toFixed(1)+'%';
+  const dates=f.map(r=>r.di).filter(Boolean).sort((a,b)=>a-b);
+  $('dateRange').textContent=dates.length?`Periodo: ${String(dates[0]).slice(6,8)}/${String(dates[0]).slice(4,6)}/${String(dates[0]).slice(0,4)} → ${String(dates.at(-1)).slice(6,8)}/${String(dates.at(-1)).slice(4,6)}/${String(dates.at(-1)).slice(0,4)}`:'Periodo: —';
+  const active=[];if($('start').value)active.push('desde '+$('start').value);if($('end').value)active.push('hasta '+$('end').value);if($('dept').value)active.push($('dept').value);if($('mun').value)active.push($('mun').value);if($('deptCode').value)active.push('depto '+$('deptCode').value);if($('munCode').value)active.push('municipio '+$('munCode').value);
+  $('activeFilters').textContent=active.length?active.join(' · '):'Sin filtros activos';
+
+  destroy('dept');state.charts.dept=bar('deptChart',ds.slice(0,15),true);
+  destroy('mun');state.charts.mun=bar('munChart',ms.slice(0,20),true);
+  const years=agg(f,r=>r.d?r.d.slice(0,4):'').sort((a,b)=>a[0].localeCompare(b[0]));
+  const mm=Array.from({length:12},(_,i)=>[new Date(2000,i,1).toLocaleString('es-CO',{month:'short'}),0]);
+  for(const r of f)if(r.d){const i=Number(r.d.slice(5,7))-1;if(i>=0)mm[i][1]+=r.q}
+  destroy('year');state.charts.year=line('yearChart',years);
+  destroy('month');state.charts.month=bar('monthChart',mm);
+  destroy('share');state.charts.share=dough('shareChart',ds.slice(0,8),total);
+  $('deptRank').innerHTML=ds.map((x,i)=>`<tr><td><span class="rankNum">${i+1}</span></td><td><b>${esc(x[0])}</b></td><td>${fmt(x[1])}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin resultados</td></tr>';
+  $('munRank').innerHTML=ms.map((x,i)=>`<tr><td><span class="rankNum">${i+1}</span></td><td><b>${esc(x[0])}</b></td><td>${fmt(x[1])}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin resultados</td></tr>';
+  const topM=ms[0],period=dates.length?`${String(dates[0]).slice(0,4)}–${String(dates.at(-1)).slice(0,4)}`:'—';
+  $('insight').innerHTML=f.length?`
+    <div class="insightItem"><b>Departamento líder:</b> ${esc(leader?.[0]||'—')} concentra <b>${fmt(leader?.[1]||0)}</b> accidentes (${share.toFixed(1)}%).</div>
+    <div class="insightItem"><b>Municipio líder:</b> ${esc(topM?.[0]||'—')} registra <b>${fmt(topM?.[1]||0)}</b> accidentes.</div>
+    <div class="insightItem"><b>Periodo:</b> ${period}, con ${fmt(f.length)} registros seleccionados.</div>
+    <div class="insightItem"><b>Promedio:</b> ${f.length?(total/f.length).toLocaleString('es-CO',{maximumFractionDigits:2}):0} accidentes por registro.</div>`:'<div class="empty">No hay resultados para los filtros actuales.</div>';
+  const sample=f.slice(0,700);$('tableMeta').textContent=`Mostrando ${fmt(sample.length)} de ${fmt(f.length)} registros filtrados.`;
+  $('tbody').innerHTML=sample.map(r=>`<tr><td>${esc(r.ds)}</td><td>${esc(r.dc)}</td><td>${esc(r.dpt)}</td><td>${esc(r.mc)}</td><td>${esc(r.mun)}</td><td class="num"><b>${fmt(r.q)}</b></td></tr>`).join('')||'<tr><td colspan="6" class="empty">No hay resultados.</td></tr>';
+}
+
+function exportCSV(){
+  if(!state.loaded){toast('Carga primero la base CSV');return}
+  if(!state.filtered.length){toast('No hay resultados para exportar');return}
+  const lines=['"FECHA HECHO","COD_DEPTO","DEPARTAMENTO","COD_MUNI","MUNICIPIO","CANTIDAD"'];
+  for(const r of state.filtered){
+    const q=v=>`"${String(v??'').replaceAll('"','""')}"`;
+    lines.push([r.ds,r.dc,r.dpt,r.mc,r.mun,r.q].map(q).join(','));
+  }
+  const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='accidentes_filtrados.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast('Archivo exportado');
+}
+</script>
+</body>
+</html>
